@@ -110,6 +110,7 @@ while (true)
     else
     {
         // 检测到用户活动（空闲时间未达到阈值），直接退出监控
+        // 这是一次性监控：任何用户活动都会导致程序退出
         Log($"检测到用户活动，退出监控（当前空闲仅 {idleTimeMs / 1000} 秒，未达到 {idleThresholdMinutes} 分钟阈值）");
         return;
     }
@@ -362,12 +363,14 @@ static bool IsAdministrator()
 /// <summary>
 /// 获取自上次用户输入（鼠标/键盘）以来的空闲时间（毫秒）
 /// </summary>
-static uint GetIdleTimeMs()
+static long GetIdleTimeMs()
 {
     var lastInputInfo = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
     if (NativeMethods.GetLastInputInfo(ref lastInputInfo))
     {
-        var tickCount = (uint)Environment.TickCount;
+        // GetLastInputInfo 返回的 dwTime 是相对于系统启动时的毫秒数
+        // 使用 GetTickCount64() 获取当前系统运行时间（64位，更精确）
+        var tickCount = NativeMethods.GetTickCount64();
         var tickDelta = tickCount - lastInputInfo.dwTime;
         return tickDelta;
     }
@@ -543,4 +546,7 @@ static partial class NativeMethods
 {
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern long GetTickCount64();
 }
