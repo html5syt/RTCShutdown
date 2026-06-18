@@ -109,11 +109,9 @@ while (true)
     }
     else
     {
-        if (consecutiveIdleChecks > 0)
-        {
-            Log($"检测到用户活动，重置空闲计数器（当前空闲 {idleTimeMs / 1000} 秒）");
-            consecutiveIdleChecks = 0;
-        }
+        // 检测到用户活动（空闲时间未达到阈值），直接退出监控
+        Log($"检测到用户活动，退出监控（当前空闲仅 {idleTimeMs / 1000} 秒，未达到 {idleThresholdMinutes} 分钟阈值）");
+        return;
     }
 
     Thread.Sleep(checkIntervalMs);
@@ -186,7 +184,7 @@ static void ConfigureSettings(string[] args)
                     }
                     break;
 
-                case "idlethreshold":
+                case "idletresholdminutes":
                     if (int.TryParse(paramValue, out var idle) && idle > 0)
                     {
                         WriteRegValue("IdleThresholdMinutes", idle);
@@ -198,7 +196,7 @@ static void ConfigureSettings(string[] args)
                     }
                     break;
 
-                case "boottolerance":
+                case "boottimetoleranceminutes":
                     if (int.TryParse(paramValue, out var boot) && boot > 0)
                     {
                         WriteRegValue("BootTimeToleranceMinutes", boot);
@@ -210,7 +208,7 @@ static void ConfigureSettings(string[] args)
                     }
                     break;
 
-                case "checkinterval":
+                case "checkintervalseconds":
                     if (int.TryParse(paramValue, out var interval) && interval > 0)
                     {
                         WriteRegValue("CheckIntervalSeconds", interval);
@@ -222,7 +220,7 @@ static void ConfigureSettings(string[] args)
                     }
                     break;
 
-                case "requireboottolerance":
+                case "requireboottimetolerance":
                     if (bool.TryParse(paramValue, out var requireBoot))
                     {
                         WriteRegValue("RequireBootTimeTolerance", requireBoot ? 1 : 0);
@@ -230,7 +228,7 @@ static void ConfigureSettings(string[] args)
                     }
                     else
                     {
-                        Console.WriteLine($"[错误] RequireBootTolerance 必须是 true 或 false");
+                        Console.WriteLine($"[错误] RequireBootTimeTolerance 必须是 true 或 false");
                     }
                     break;
 
@@ -296,8 +294,8 @@ static void InstallScheduledTask()
             Console.WriteLine("  运行账户: SYSTEM");
             Console.WriteLine("  权限:     最高权限");
             Console.WriteLine();
-            Console.WriteLine("程序将在每天 19:00 附近 RTC 唤醒后自动运行，");
-            Console.WriteLine("若 1 小时内无任何操作则自动关机。");
+            Console.WriteLine($"程序将在每天 {ReadRegInt("CheckHour", DefaultCheckHour)}时 附近 RTC 唤醒后自动运行，");
+            Console.WriteLine($"若 {ReadRegInt("IdleThresholdMinutes", DefaultIdleThresholdMinutes)} 分钟内无任何操作则自动关机。");
         }
         else
         {
